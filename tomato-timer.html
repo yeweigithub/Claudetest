@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>番茄钟 - Pomodoro Timer</title>
+    <style>
+        /* ===== 全局重置 ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* ===== 背景:紫蓝渐变,居中布局 ===== */
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #333;
+        }
+
+        /* ===== 主卡片容器:半透明白底 + 圆角 + 阴影 ===== */
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        /* ===== 标题 ===== */
+        h1 {
+            color: #764ba2;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+
+        /* ===== 大号时间显示 "25:00" ===== */
+        .timer-display {
+            font-size: 4em;
+            font-weight: bold;
+            color: #333;
+            margin: 30px 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* ===== 模式标签胶囊(专注/短休/长休) ===== */
+        .mode-indicator {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        /* 专注模式:红色背景 */
+        .focus-mode {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        /* 休息模式:青色背景(短休/长休共用) */
+        .break-mode {
+            background: #4ecdc4;
+            color: white;
+        }
+
+        /* ===== 控制按钮容器(开始/暂停/重置) ===== */
+        .controls {
+            margin: 30px 0;
+        }
+
+        /* ===== 按钮通用样式 ===== */
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            margin: 0 10px;
+            border-radius: 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        /* 悬停:上移 2px + 加深阴影 */
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 按下:回到原位 */
+        button:active {
+            transform: translateY(0);
+        }
+
+        /* 禁用:半透明 + 禁止光标 */
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* ===== 设置区:灰色圆角面板 ===== */
+        .settings {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        /* 单条设置:label 在左,input 在右 */
+        .setting-item {
+            margin: 15px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .setting-item label {
+            font-weight: bold;
+            color: #555;
+        }
+
+        .setting-item input {
+            width: 80px;
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 1em;
+        }
+
+        /* ===== 任务列表区 ===== */
+        .task-list {
+            margin-top: 30px;
+            text-align: left;
+        }
+
+        .task-list h3 {
+            color: #764ba2;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        /* 任务输入框 */
+        .task-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            font-size: 1em;
+            margin-bottom: 15px;
+        }
+
+        /* 单条任务卡片 */
+        .task-item {
+            background: white;
+            padding: 10px 15px;
+            margin: 8px 0;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 已完成:删除线 + 半透明 */
+        .task-item.completed {
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+
+        /* 任务卡内的小按钮覆盖通用按钮样式 */
+        .task-item button {
+            padding: 5px 15px;
+            font-size: 0.9em;
+            margin: 0 5px;
+        }
+
+        /* ===== 已完成任务区(在待办下方) ===== */
+        .completed-tasks {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #eee;
+        }
+
+        .completed-tasks h3 {
+            color: #4ecdc4;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        /* ===== 统计区 ===== */
+        .stats {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .stats h3 {
+            color: #764ba2;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        /* 单条统计行:左标签右数值 */
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 8px;
+            background: white;
+            border-radius: 5px;
+        }
+
+        /* ===== 计时运行中的呼吸动画 ===== */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        /* 计时运行时给时间显示加 .running 类,触发 pulse 动画 */
+        .timer-display.running {
+            animation: pulse 1s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- ===== 标题 ===== -->
+        <h1>🍅 番茄钟</h1>
+
+        <!-- ===== 模式指示器(专注模式 / 短休息 / 长休息) ===== -->
+        <div class="mode-indicator" id="modeIndicator">
+            <span id="modeText">专注模式</span>
+        </div>
+
+        <!-- ===== 大号时间显示,JS 每秒更新 ===== -->
+        <div class="timer-display" id="timerDisplay">25:00</div>
+
+        <!-- ===== 控制按钮:开始 / 暂停 / 重置 ===== -->
+        <div class="controls">
+            <button id="startBtn">开始</button>
+            <button id="pauseBtn" disabled>暂停</button>
+            <button id="resetBtn">重置</button>
+        </div>
+
+        <!-- ===== 设置区:可调时长与长休息触发次数 ===== -->
+        <div class="settings">
+            <div class="setting-item">
+                <label>专注时长（分钟）:</label>
+                <input type="number" id="focusMinutes" value="25" min="1" max="60">
+            </div>
+            <div class="setting-item">
+                <label>短休息时长（分钟）:</label>
+                <input type="number" id="shortBreakMinutes" value="5" min="1" max="30">
+            </div>
+            <div class="setting-item">
+                <label>长休息时长（分钟）:</label>
+                <input type="number" id="longBreakMinutes" value="15" min="1" max="60">
+            </div>
+            <div class="setting-item">
+                <label>连续专注后长休息:</label>
+                <input type="number" id="longBreakAfter" value="4" min="2" max="10">
+            </div>
+        </div>
+
+        <!-- ===== 任务列表:输入框 + 待办 + 已完成 ===== -->
+        <div class="task-list">
+            <h3>📝 待办任务</h3>
+            <!-- 回车添加任务 -->
+            <input type="text" class="task-input" id="taskInput" placeholder="添加新任务...">
+            <!-- 待办任务由 JS 动态渲染 -->
+            <div id="tasksList"></div>
+            <div class="completed-tasks">
+                <h3>✅ 已完成任务</h3>
+                <!-- 已完成任务由 JS 动态渲染 -->
+                <div id="completedTasksList"></div>
+            </div>
+        </div>
+
+        <!-- ===== 统计区:今日数据 + 已完成任务数 ===== -->
+        <div class="stats">
+            <h3>📊 统计信息</h3>
+            <div class="stat-item">
+                <span>今日专注次数:</span>
+                <!-- id="todayCount" 由 updateStats() 填充 -->
+                <span id="todayCount">0</span>
+            </div>
+            <div class="stat-item">
+                <span>今日专注时长:</span>
+                <!-- id="todayDuration" 由 updateStats() 填充 -->
+                <span id="todayDuration">0 分钟</span>
+            </div>
+            <div class="stat-item">
+                <span>完成任务数:</span>
+                <!-- id="completedTasksCount" 由 updateStats() 填充 -->
+                <span id="completedTasksCount">0</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * PomodoroTimer — 番茄钟主类
+         * 封装:计时循环、模式切换、任务 CRUD、localStorage 持久化、提示音与系统通知。
+         * 实例化为全局变量 `timer`,供 HTML 中 onclick="timer.xxx(...)" 调用。
+         */
+        class PomodoroTimer {
+            constructor() {
+                // 运行状态:true=计时中
+                this.isRunning = false;
+                // 暂停标记(目前未直接使用,保留供扩展)
+                this.isPaused = false;
+                // 当前剩余秒数(初始 25 分钟)
+                this.currentTime = 25 * 60; // 默认25分钟
+                // 当前模式:'focus' | 'shortBreak' | 'longBreak'
+                this.mode = 'focus'; // focus, shortBreak, longBreak
+                // 本轮已完成的专注次数(用于判断是否进入长休息)
+                this.sessionCount = 0;
+                // 历史专注记录(按日期分桶,从 localStorage 读)
+                this.completedSessions = this.loadCompletedSessions();
+                // 待办任务数组
+                this.tasks = this.loadTasks();
+                // 已完成任务数组
+                this.completedTasks = this.loadCompletedTasks();
+
+                // 初始化流程:抓 DOM → 读设置 → 渲染界面
+                this.initializeElements();
+                this.initializeSettings();
+                this.updateDisplay();
+                this.renderTasks();
+                this.updateStats();
+            }
+
+            /**
+             * initializeElements — 抓取所有 DOM 引用并绑定事件
+             * 关键点:任务输入框监听 Enter 键添加任务。
+             */
+            initializeElements() {
+                this.timerDisplay = document.getElementById('timerDisplay');
+                this.modeIndicator = document.getElementById('modeIndicator');
+                this.modeText = document.getElementById('modeText');
+                this.startBtn = document.getElementById('startBtn');
+                this.pauseBtn = document.getElementById('pauseBtn');
+                this.resetBtn = document.getElementById('resetBtn');
+                this.taskInput = document.getElementById('taskInput');
+                this.tasksList = document.getElementById('tasksList');
+                this.completedTasksList = document.getElementById('completedTasksList');
+                this.todayCount = document.getElementById('todayCount');
+                this.todayDuration = document.getElementById('todayDuration');
+                this.completedTasksCount = document.getElementById('completedTasksCount');
+
+                // 绑定事件
+                this.startBtn.addEventListener('click', () => this.start());
+                this.pauseBtn.addEventListener('click', () => this.pause());
+                this.resetBtn.addEventListener('click', () => this.reset());
+                this.taskInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.addTask();
+                });
+            }
+
+            /**
+             * initializeSettings — 读取 4 个设置输入框并监听变化
+             * 关键点:仅在「未运行 + 当前模式与所改设置一致」时才实时更新倒计时,
+             *         避免运行中改设置导致显示跳变。
+             */
+            initializeSettings() {
+                this.focusMinutes = parseInt(document.getElementById('focusMinutes').value);
+                this.shortBreakMinutes = parseInt(document.getElementById('shortBreakMinutes').value);
+                this.longBreakMinutes = parseInt(document.getElementById('longBreakMinutes').value);
+                this.longBreakAfter = parseInt(document.getElementById('longBreakAfter').value);
+
+                // 监听设置变化
+                document.getElementById('focusMinutes').addEventListener('change', () => {
+                    this.focusMinutes = parseInt(document.getElementById('focusMinutes').value);
+                    if (this.mode === 'focus' && !this.isRunning) {
+                        this.currentTime = this.focusMinutes * 60;
+                        this.updateDisplay();
+                    }
+                });
+
+                document.getElementById('shortBreakMinutes').addEventListener('change', () => {
+                    this.shortBreakMinutes = parseInt(document.getElementById('shortBreakMinutes').value);
+                    if (this.mode === 'shortBreak' && !this.isRunning) {
+                        this.currentTime = this.shortBreakMinutes * 60;
+                        this.updateDisplay();
+                    }
+                });
+
+                document.getElementById('longBreakMinutes').addEventListener('change', () => {
+                    this.longBreakMinutes = parseInt(document.getElementById('longBreakMinutes').value);
+                    if (this.mode === 'longBreak' && !this.isRunning) {
+                        this.currentTime = this.longBreakMinutes * 60;
+                        this.updateDisplay();
+                    }
+                });
+            }
+
+            /**
+             * start — 启动计时
+             * 关键点:setInterval 每 1s 触发,currentTime-- 并刷新显示;
+             *         到 0 时调用 completeSession() 进入下一段。
+             */
+            start() {
+                if (!this.isRunning) {
+                    this.isRunning = true;
+                    this.isPaused = false;
+                    this.startBtn.disabled = true;
+                    this.pauseBtn.disabled = false;
+                    this.timerDisplay.classList.add('running');
+
+                    this.timer = setInterval(() => {
+                        this.currentTime--;
+                        this.updateDisplay();
+
+                        if (this.currentTime <= 0) {
+                            this.completeSession();
+                        }
+                    }, 1000);
+                }
+            }
+
+            /**
+             * pause — 暂停计时
+             * 关键点:清除 setInterval,保留 currentTime,可再次 start() 接着倒计时。
+             */
+            pause() {
+                if (this.isRunning) {
+                    this.isRunning = false;
+                    this.isPaused = true;
+                    this.startBtn.disabled = false;
+                    this.pauseBtn.disabled = true;
+                    this.timerDisplay.classList.remove('running');
+                    clearInterval(this.timer);
+                }
+            }
+
+            /**
+             * reset — 重置当前段
+             * 关键点:停表,按当前模式重新填满时间(不会切换模式)。
+             */
+            reset() {
+                this.isRunning = false;
+                this.isPaused = false;
+                this.startBtn.disabled = false;
+                this.pauseBtn.disabled = true;
+                this.timerDisplay.classList.remove('running');
+                clearInterval(this.timer);
+
+                // 根据当前模式重置时间
+                if (this.mode === 'focus') {
+                    this.currentTime = this.focusMinutes * 60;
+                } else if (this.mode === 'shortBreak') {
+                    this.currentTime = this.shortBreakMinutes * 60;
+                } else if (this.mode === 'longBreak') {
+                    this.currentTime = this.longBreakMinutes * 60;
+                }
+
+                this.updateDisplay();
+            }
+
+            /**
+             * completeSession — 一段倒计时结束后的核心流程
+             * 流程:
+             *   1. 停表
+             *   2. 若刚结束的是"专注":sessionCount++,写入今日统计;按 longBreakAfter 决定下一段是长休还是短休
+             *   3. 若刚结束的是"休息":切回专注
+             *   4. 持久化、刷新统计、播放提示音、弹通知
+             */
+            completeSession() {
+                clearInterval(this.timer);
+                this.isRunning = false;
+                this.startBtn.disabled = false;
+                this.pauseBtn.disabled = true;
+                this.timerDisplay.classList.remove('running');
+
+                // 保存完成的会话
+                const today = new Date().toDateString();
+                if (!this.completedSessions[today]) {
+                    this.completedSessions[today] = 0;
+                    this.completedSessions[today + '_duration'] = 0;
+                }
+
+                if (this.mode === 'focus') {
+                    this.sessionCount++;
+                    this.completedSessions[today]++;
+                    this.completedSessions[today + '_duration'] += this.focusMinutes;
+
+                    // 计算是否需要长休息
+                    if (this.sessionCount % this.longBreakAfter === 0) {
+                        this.switchMode('longBreak');
+                    } else {
+                        this.switchMode('shortBreak');
+                    }
+                } else {
+                    this.switchMode('focus');
+                }
+
+                this.saveCompletedSessions();
+                this.updateStats();
+
+                // 播放提示音（如果浏览器支持）
+                this.playNotification();
+
+                // 显示通知
+                this.showNotification();
+            }
+
+            /**
+             * switchMode — 切换到指定模式(focus / shortBreak / longBreak)
+             * 关键点:重置该模式的满时间,改文案与模式标签 CSS 类(红/青)。
+             */
+            switchMode(newMode) {
+                this.mode = newMode;
+                this.isRunning = false;
+                this.isPaused = false;
+                this.startBtn.disabled = false;
+                this.pauseBtn.disabled = true;
+                this.timerDisplay.classList.remove('running');
+                clearInterval(this.timer);
+
+                // 更新时间和显示
+                if (newMode === 'focus') {
+                    this.currentTime = this.focusMinutes * 60;
+                    this.modeText.textContent = '专注模式';
+                    this.modeIndicator.className = 'mode-indicator focus-mode';
+                } else if (newMode === 'shortBreak') {
+                    this.currentTime = this.shortBreakMinutes * 60;
+                    this.modeText.textContent = '短休息';
+                    this.modeIndicator.className = 'mode-indicator break-mode';
+                } else if (newMode === 'longBreak') {
+                    this.currentTime = this.longBreakMinutes * 60;
+                    this.modeText.textContent = '长休息';
+                    this.modeIndicator.className = 'mode-indicator break-mode';
+                }
+
+                this.updateDisplay();
+            }
+
+            /**
+             * updateDisplay — 秒数 → "mm:ss" 文本(补零),写入 timerDisplay
+             */
+            updateDisplay() {
+                const minutes = Math.floor(this.currentTime / 60);
+                const seconds = this.currentTime % 60;
+                this.timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+
+            /**
+             * addTask — 把输入框中的文本加入待办列表
+             * 关键点:用 Date.now() 当 id;空文本忽略;保存到 localStorage 后清空输入框。
+             */
+            addTask() {
+                const taskText = this.taskInput.value.trim();
+                if (taskText) {
+                    const task = {
+                        id: Date.now(),
+                        text: taskText,
+                        createdAt: new Date().toISOString(),
+                        completed: false
+                    };
+
+                    this.tasks.push(task);
+                    this.saveTasks();
+                    this.renderTasks();
+                    this.taskInput.value = '';
+                }
+            }
+
+            /**
+             * toggleTask — 标记任务为已完成
+             * 关键点:单向流转(待办 → 已完成),无撤销。完成后从 tasks 移到 completedTasks。
+             */
+            toggleTask(taskId) {
+                const task = this.tasks.find(t => t.id === taskId);
+                if (task) {
+                    task.completed = true;
+                    this.completedTasks.push(task);
+                    this.tasks = this.tasks.filter(t => t.id !== taskId);
+                    this.saveTasks();
+                    this.saveCompletedTasks();
+                    this.renderTasks();
+                    this.updateStats();
+                }
+            }
+
+            /**
+             * deleteTask — 从待办列表删除一条任务
+             */
+            deleteTask(taskId) {
+                this.tasks = this.tasks.filter(t => t.id !== taskId);
+                this.saveTasks();
+                this.renderTasks();
+            }
+
+            /**
+             * renderTasks — 重新渲染待办与已完成两个列表
+             * 关键点:每次完整重建 DOM(简单但任务量大时性能一般);
+             *         按钮通过 onclick="timer.xxx(id)" 调用全局实例方法。
+             */
+            renderTasks() {
+                // 渲染待办任务
+                this.tasksList.innerHTML = '';
+                this.tasks.forEach(task => {
+                    const taskEl = document.createElement('div');
+                    taskEl.className = 'task-item';
+                    taskEl.innerHTML = `
+                        <span>${task.text}</span>
+                        <div>
+                            <button onclick="timer.toggleTask(${task.id})" style="background: #4ecdc4;">完成</button>
+                            <button onclick="timer.deleteTask(${task.id})" style="background: #ff6b6b;">删除</button>
+                        </div>
+                    `;
+                    this.tasksList.appendChild(taskEl);
+                });
+
+                // 渲染已完成任务
+                this.completedTasksList.innerHTML = '';
+                this.completedTasks.forEach(task => {
+                    const taskEl = document.createElement('div');
+                    taskEl.className = 'task-item completed';
+                    taskEl.innerHTML = `
+                        <span>${task.text}</span>
+                        <button onclick="timer.deleteCompletedTask(${task.id})" style="background: #ff6b6b;">删除</button>
+                    `;
+                    this.completedTasksList.appendChild(taskEl);
+                });
+            }
+
+            /**
+             * deleteCompletedTask — 从已完成列表删除一条任务
+             */
+            deleteCompletedTask(taskId) {
+                this.completedTasks = this.completedTasks.filter(t => t.id !== taskId);
+                this.saveCompletedTasks();
+                this.renderTasks();
+            }
+
+            /**
+             * updateStats — 把 localStorage 中的今日数据填到三个统计 span
+             * 关键点:今日专注次数/时长从 completedSessions[今日日期] 取,
+             *         已完成任务数取 completedTasks.length。
+             */
+            updateStats() {
+                const today = new Date().toDateString();
+                const todayCompleted = this.completedSessions[today] || 0;
+                const todayDuration = this.completedSessions[today + '_duration'] || 0;
+
+                this.todayCount.textContent = todayCompleted;
+                this.todayDuration.textContent = `${todayDuration} 分钟`;
+                this.completedTasksCount.textContent = this.completedTasks.length;
+            }
+
+            /**
+             * playNotification — 用 Web Audio API 合成一段"叮"声提示
+             * 关键点:不依赖任何音频文件;800Hz 正弦波,0.5s 指数衰减。
+             */
+            playNotification() {
+                // 创建音频上下文来播放提示音
+                if (typeof AudioContext !== 'undefined' || typeof webkitAudioContext !== 'undefined') {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    const audioContext = new AudioContext();
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+
+                    oscillator.frequency.value = 800;
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.5);
+                }
+            }
+
+            /**
+             * showNotification — 弹出浏览器系统通知
+             * 关键点:首次调用时若权限是 'default',会请求权限;
+             *         根据 this.mode 决定文案(休息到 vs 专注到)。
+             */
+            showNotification() {
+                if (Notification.permission === 'granted') {
+                    let title, message;
+                    if (this.mode === 'shortBreak' || this.mode === 'longBreak') {
+                        title = '休息时间到！';
+                        message = '该休息一下了，为下一个番茄钟做准备吧！';
+                    } else {
+                        title = '番茄钟完成！';
+                        message = '恭喜完成一个专注时段！';
+                    }
+
+                    new Notification(title, {
+                        body: message,
+                        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🍅</text></svg>'
+                    });
+                } else if (Notification.permission !== 'denied') {
+                    Notification.requestPermission();
+                }
+            }
+
+            // ===== localStorage 持久化:三个 key 分别存历史专注、待办、已完成 =====
+
+            /** saveCompletedSessions — 把 completedSessions 对象写入 localStorage */
+            saveCompletedSessions() {
+                localStorage.setItem('pomodoroCompletedSessions', JSON.stringify(this.completedSessions));
+            }
+
+            /** loadCompletedSessions — 读取历史专注记录,无则返回空对象 */
+            loadCompletedSessions() {
+                const saved = localStorage.getItem('pomodoroCompletedSessions');
+                return saved ? JSON.parse(saved) : {};
+            }
+
+            /** saveTasks — 持久化待办任务数组 */
+            saveTasks() {
+                localStorage.setItem('pomodoroTasks', JSON.stringify(this.tasks));
+            }
+
+            /** loadTasks — 读取待办任务,无则返回空数组 */
+            loadTasks() {
+                const saved = localStorage.getItem('pomodoroTasks');
+                return saved ? JSON.parse(saved) : [];
+            }
+
+            /** saveCompletedTasks — 持久化已完成任务数组 */
+            saveCompletedTasks() {
+                localStorage.setItem('pomodoroCompletedTasks', JSON.stringify(this.completedTasks));
+            }
+
+            /** loadCompletedTasks — 读取已完成任务,无则返回空数组 */
+            loadCompletedTasks() {
+                const saved = localStorage.getItem('pomodoroCompletedTasks');
+                return saved ? JSON.parse(saved) : [];
+            }
+        }
+
+        // ===== 启动入口 =====
+        // 实例化番茄钟,赋值给全局变量 timer,供 HTML 中 onclick="timer.xxx(...)" 使用
+        const timer = new PomodoroTimer();
+
+        // 页面加载时若通知权限未决,主动请求一次(用户首次使用会看到弹窗)
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+    </script>
+</body>
+</html>
